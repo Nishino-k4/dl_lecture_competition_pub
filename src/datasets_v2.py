@@ -30,21 +30,25 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
             assert len(torch.unique(self.y)) == self.num_classes, "Number of classes do not match."
 
         self.apply_baseline_correction()
-        # self.filter_data(fs)
+        self.filter_data(fs)
+        self.apply_standardization()
 
     def apply_baseline_correction(self):
         baseline = self.X[:, :, self.baseline_window[0]:self.baseline_window[1]].mean(dim=2, keepdim=True)
         self.X -= baseline
 
-    # def filter_data(self, fs: float):
-    #     # Create a low-pass filter with a cutoff frequency of 40 Hz
-    #     cutoff = 40.0
-    #     b, a = create_lowpass_filter(cutoff, fs)
+    def filter_data(self, fs: float):
+        cutoff = 40.0
+        b, a = create_lowpass_filter(cutoff, fs)
 
-    #     # Apply the filter to each channel in the dataset
-    #     for i in range(self.X.shape[1]):
-    #         filtered_channel = filter_signal(self.X[:, i, :].numpy(), b, a)
-    #         self.X[:, i, :] = torch.from_numpy(filtered_channel.copy())
+        for i in range(self.X.shape[1]):
+            filtered_channel = filter_signal(self.X[:, i, :].numpy(), b, a)
+            self.X[:, i, :] = torch.from_numpy(filtered_channel.copy())
+
+    def apply_standardization(self):
+        mean = self.X.mean(dim=2, keepdim=True)
+        std = self.X.std(dim=2, keepdim=True)
+        self.X = (self.X - mean) / std
 
     def __len__(self) -> int:
         return len(self.X)
@@ -62,4 +66,3 @@ class ThingsMEGDataset(torch.utils.data.Dataset):
     @property
     def seq_len(self) -> int:
         return self.X.shape[2]
-
